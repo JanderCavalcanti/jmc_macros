@@ -1,0 +1,1188 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Oficina de Macros</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: bancada em três colunas (biblioteca · editor · verificar/enviar) que vira uma coluna no celular.
+   As cores de gatilho/ação/restrição seguem o código de cores do próprio MacroDroid. */
+:root{
+  --bg:#edf0f3; --surface:#ffffff; --surface-2:#f5f7f9; --ink:#15202b; --muted:#5a6774; --line:#d3dae1;
+  --primary:#15202b; --on-primary:#ffffff; --focus:#2f7fbf;
+  --trig:#cf3f2a; --trig-soft:#fbe9e5; --act:#2560c4; --act-soft:#e6eefb; --cons:#2c8a4c; --cons-soft:#e3f3e8;
+  --ok:#2c8a4c; --warn:#a8670f; --bad:#c0392b;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141a; --surface:#16202a; --surface-2:#1c2732; --ink:#e5ecf2; --muted:#98a6b4; --line:#2b3947;
+  --primary:#e5ecf2; --on-primary:#0e141a; --focus:#6fb2e8;
+  --trig:#ff7f68; --trig-soft:#3a201c; --act:#79a8ff; --act-soft:#1b2a44; --cons:#62c987; --cons-soft:#183126;
+  --ok:#62c987; --warn:#e6a94b; --bad:#ff7b6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141a; --surface:#16202a; --surface-2:#1c2732; --ink:#e5ecf2; --muted:#98a6b4; --line:#2b3947;
+  --primary:#e5ecf2; --on-primary:#0e141a; --focus:#6fb2e8;
+  --trig:#ff7f68; --trig-soft:#3a201c; --act:#79a8ff; --act-soft:#1b2a44; --cons:#62c987; --cons-soft:#183126;
+  --ok:#62c987; --warn:#e6a94b; --bad:#ff7b6b; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+code,pre,textarea.code{font-family:var(--f-mono);font-size:12.5px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.wrap{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:14px 40px;max-width:1500px;margin:0 auto}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding-block:6px 14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{font-size:22px;font-weight:700}
+.brand span{color:var(--muted);font-size:13px}
+.save-state{font-size:13px;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns:240px minmax(0,1fr) 340px;gap:18px;align-items:start}
+@media (max-width:1180px){.grid{grid-template-columns:minmax(0,1fr) 320px}.lib{grid-column:1 / -1}}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.panel-h h2{font-size:15px;font-weight:700}
+.panel-b{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.primary:hover{opacity:.9}
+.btn.small{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.icon-btn{border:0;background:transparent;border-radius:5px;width:28px;height:28px;display:inline-grid;place-items:center;color:var(--muted);font-size:15px}
+.icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* biblioteca */
+.lib details>summary{list-style:none;cursor:pointer}
+.lib details>summary::-webkit-details-marker{display:none}
+.lib-list{display:flex;flex-direction:column;max-height:60vh;overflow:auto}
+.lib-item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:6px;text-align:left;border:0;background:transparent;width:100%}
+.lib-item:hover{background:var(--surface-2)}
+.lib-item.on{background:var(--act-soft)}
+.lib-item .nm{flex:1;min-width:0}
+.lib-item .nm b{display:block;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-item .nm small{color:var(--muted);font-size:12px}
+.lib-empty{color:var(--muted);font-size:13.5px;padding:4px 2px}
+.confirm-del{font-size:12.5px;display:flex;gap:6px;align-items:center;padding:0 10px 8px}
+
+/* editor */
+.meta{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px}
+@media (max-width:560px){.meta{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field input,.field textarea,.field select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:var(--surface);width:100%}
+.field textarea{resize:vertical;min-height:54px}
+.field input[type=checkbox]{width:auto}
+.meta .full{grid-column:1 / -1}
+.name-input{font-family:var(--f-display);font-size:20px !important;font-weight:700}
+.tabs{display:flex;gap:4px}
+.tab{border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 11px;font-size:14px;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--surface-2);border-color:var(--line);color:var(--ink);font-weight:700}
+.banner{background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:8px 10px;font-size:13.5px;color:var(--muted)}
+
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec-h{display:flex;align-items:center;gap:10px}
+.sec-h h3{font-size:16px;font-weight:700}
+.sec-h .count{color:var(--muted);font-size:13px}
+.sec-h .btn{margin-left:auto}
+.dot{width:12px;height:12px;border-radius:3px;flex:none}
+.k-t .dot,.dot.k-t{background:var(--trig)} .k-a .dot,.dot.k-a{background:var(--act)} .k-c .dot,.dot.k-c{background:var(--cons)}
+.items{display:flex;flex-direction:column;gap:6px}
+.empty-sec{font-size:13.5px;color:var(--muted);padding:10px 12px;border:1px dashed var(--line);border-radius:6px}
+
+.item{border:1px solid var(--line);border-radius:7px;background:var(--surface);min-width:0}
+.item.k-t{background:linear-gradient(var(--trig-soft),var(--trig-soft)) left/4px 100% no-repeat,var(--surface)}
+.item.k-a{background:linear-gradient(var(--act-soft),var(--act-soft)) left/4px 100% no-repeat,var(--surface)}
+.item.k-c{background:linear-gradient(var(--cons-soft),var(--cons-soft)) left/4px 100% no-repeat,var(--surface)}
+.item.off{opacity:.55}
+.item.flow{background:var(--surface-2)}
+.item-head{display:flex;align-items:center;gap:8px;padding:7px 6px 7px 12px}
+.item-title{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.item-title b{font-size:14.5px}
+.item-title code{color:var(--muted);font-size:11.5px;overflow-wrap:anywhere}
+.item-tools{display:flex;gap:0;flex:none}
+.item-sum{padding:0 12px 8px 32px;font-size:12.5px;color:var(--muted);font-family:var(--f-mono);overflow-wrap:anywhere}
+.item-body{padding:0 12px 10px 32px;display:flex;flex-direction:column;gap:6px}
+.item-body details>summary{cursor:pointer;font-size:13px;color:var(--muted);width:max-content}
+textarea.code{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--surface-2);resize:vertical;line-height:1.5;tab-size:2}
+.err{color:var(--bad);font-size:12.5px}
+.refbox{margin:0;max-height:280px;overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.subcons{display:flex;flex-direction:column;gap:5px;padding-left:10px;border-left:2px solid var(--cons-soft)}
+.subcons .label{color:var(--cons)}
+
+.vars{display:flex;flex-direction:column;gap:6px}
+.var-row{display:grid;grid-template-columns:minmax(0,1.3fr) 120px minmax(0,1.5fr) 28px;gap:6px;align-items:center}
+.var-row input,.var-row select{border:1px solid var(--line);border-radius:6px;padding:5px 7px;background:var(--surface);width:100%;min-width:0}
+@media (max-width:520px){.var-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 28px}.var-row .vv{grid-column:1 / 3}}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:5px;padding:2px 7px;font-family:var(--f-mono);font-size:12px}
+.chip:hover{border-color:var(--focus)}
+
+/* lateral */
+.side{display:flex;flex-direction:column;gap:14px;position:sticky;top:12px}
+@media (max-width:820px){.side{position:static}}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status.ok{color:var(--ok)} .status.ok::before{background:var(--ok)}
+.status.bad{color:var(--bad)} .status.bad::before{background:var(--bad)}
+.status.busy::before{background:var(--warn)}
+.problems{margin:0;padding-left:18px;font-size:13px;color:var(--bad);display:flex;flex-direction:column;gap:3px}
+.notice{font-size:13px;color:var(--muted)}
+.notice.bad{color:var(--bad)}
+.notice.ok{color:var(--ok)}
+.share-out{display:flex;flex-direction:column;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--surface-2)}
+.share-out a{font-family:var(--f-mono);font-size:13px;word-break:break-all;color:var(--act)}
+.qr{background:#ffffff;padding:8px;border-radius:6px;line-height:0}
+.ai-log{font-size:13px;display:flex;flex-direction:column;gap:3px;color:var(--muted)}
+.ai-log .on{color:var(--ink);font-weight:700}
+.ai-log .done{color:var(--ok)}
+.ai-log .fail{color:var(--bad)}
+.ai-feedback{font-size:13.5px;background:var(--surface-2);border-radius:6px;padding:8px 10px}
+
+/* diálogo */
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:0;width:min(640px, calc(100vw - 32px));max-height:min(80vh,720px)}
+dialog::backdrop{background:rgba(10,16,22,.45)}
+.dlg{display:flex;flex-direction:column;max-height:min(80vh,720px)}
+.dlg-h{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.dlg-h h2{font-size:17px;margin-right:auto}
+.dlg-search{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.dlg-search input{border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--surface-2);width:100%}
+.dlg-list{overflow:auto;padding:6px}
+.pick{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:6px}
+.pick:hover,.pick:focus-visible{background:var(--surface-2)}
+.pick .dot{margin-top:4px}
+.pick b{display:block;font-size:14.5px}
+.pick code{color:var(--muted);font-size:11.5px}
+.pick small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.dlg-foot{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.check-row{display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:6px}
+.check-row:hover{background:var(--surface-2)}
+/* manual */
+#manualDlg{width:min(760px, calc(100vw - 32px))}
+.manual{overflow:auto;padding:4px 20px 20px;max-width:68ch}
+.manual nav{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0;border-bottom:1px solid var(--line);margin-bottom:6px}
+.manual nav a{font-size:13px;color:var(--act);text-decoration:none;border:1px solid var(--line);border-radius:5px;padding:2px 8px}
+.manual h3{font-size:17px;margin-top:22px;margin-bottom:6px}
+.manual p,.manual li{font-size:14.5px}
+.manual ol,.manual ul{padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.manual code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.manual .tip{background:var(--surface-2);border-radius:6px;padding:8px 12px;font-size:13.5px}
+.manual .only-site{border-left:3px solid var(--warn);padding-left:10px}
+.kinds{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:8px 0}
+.kinds div{border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13.5px}
+.kinds b{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Oficina de Macros</h1><span>editor do MacroDroid no navegador</span></div>
+    <span class="save-state" id="saveState" aria-live="polite"></span>
+    <button class="btn" id="btnManual" type="button">Manual</button>
+    <button class="btn" id="btnNew" type="button">＋ Nova macro</button>
+  </header>
+
+  <div class="grid">
+    <!-- biblioteca -->
+    <aside class="lib panel">
+      <details id="libBox" open>
+        <summary class="panel-h"><h2>Minhas macros <span class="count" id="libCount"></span></h2><span class="notice" id="libWhere"></span></summary>
+        <div class="panel-b">
+          <div class="lib-list" id="libList"></div>
+          <div class="row">
+            <label class="btn small" for="fileIn">Abrir arquivo</label>
+            <input type="file" id="fileIn" accept=".macro,.mdr,.json,application/json" hidden>
+            <button class="btn small" id="btnDrive" type="button">Abrir do Drive</button>
+          </div>
+          <p class="notice">Aceita .macro e backups .mdr exportados pelo MacroDroid.</p>
+        </div>
+      </details>
+    </aside>
+
+    <!-- editor -->
+    <main class="panel" id="editorPanel">
+      <div class="panel-h">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabBlocks" aria-selected="true" type="button">Blocos</button>
+          <button class="tab" role="tab" id="tabJson" aria-selected="false" type="button">JSON</button>
+        </div>
+        <span class="status" id="statusChip">Não verificada</span>
+      </div>
+      <div class="panel-b" id="viewBlocks">
+        <div class="banner" id="exampleBanner" hidden>Esta é uma macro de exemplo. Edite à vontade: ela entra em “Minhas macros” na primeira alteração.</div>
+        <div class="meta">
+          <div class="field full"><label class="label" for="mName">Nome</label><input id="mName" class="name-input" autocomplete="off"></div>
+          <div class="field"><label class="label" for="mDesc">Descrição</label><textarea id="mDesc" rows="2"></textarea></div>
+          <div class="field"><label class="label" for="mCat">Categoria</label><input id="mCat" autocomplete="off">
+            <label class="row" style="margin-top:6px;font-size:14px"><input type="checkbox" id="mEnabled"> Macro ativada</label>
+            <label class="row" style="font-size:14px"><input type="checkbox" id="mOr"> Restrições com lógica OU</label>
+          </div>
+        </div>
+
+        <section class="sec k-t">
+          <div class="sec-h"><span class="dot"></span><h3>Gatilhos</h3><span class="count" id="cntT"></span><button class="btn small" data-add="t" type="button">＋ Gatilho</button></div>
+          <div class="items" id="listT"></div>
+        </section>
+        <section class="sec k-a">
+          <div class="sec-h"><span class="dot"></span><h3>Ações</h3><span class="count" id="cntA"></span><button class="btn small" data-add="a" type="button">＋ Ação</button></div>
+          <div class="items" id="listA"></div>
+        </section>
+        <section class="sec k-c">
+          <div class="sec-h"><span class="dot"></span><h3>Restrições</h3><span class="count" id="cntC"></span><button class="btn small" data-add="c" type="button">＋ Restrição</button></div>
+          <div class="items" id="listC"></div>
+        </section>
+        <section class="sec">
+          <div class="sec-h"><h3>Variáveis locais</h3><span class="count" id="cntV"></span><button class="btn small" id="btnAddVar" type="button">＋ Variável</button></div>
+          <div class="vars" id="listV"></div>
+        </section>
+        <section class="sec">
+          <div class="label">Texto mágico (clique para inserir no campo em edição)</div>
+          <div class="chips" id="magicChips"></div>
+        </section>
+      </div>
+      <div class="panel-b" id="viewJson" hidden>
+        <p class="notice">JSON completo no formato de exportação do MacroDroid. Edite e clique em Aplicar.</p>
+        <textarea class="code" id="jsonArea" spellcheck="false" style="min-height:60vh"></textarea>
+        <div class="row"><button class="btn primary" id="btnApplyJson" type="button">Aplicar</button><span class="err" id="jsonErr"></span></div>
+      </div>
+    </main>
+
+    <!-- lateral -->
+    <div class="side">
+      <section class="panel">
+        <div class="panel-h"><h2>Assistente</h2><span class="notice" id="aiAvail"></span></div>
+        <div class="panel-b">
+          <div class="field"><label class="label" for="aiInput">Descreva a macro ou o que mudar</label>
+            <textarea id="aiInput" rows="4" placeholder="Ex.: quando chegar notificação do WhatsApp com a palavra “urgente”, falar o texto e vibrar, só entre 8h e 22h"></textarea></div>
+          <div class="field"><label class="label" for="aiMode">Aplicar em</label>
+            <select id="aiMode"><option value="edit">Esta macro (alterar)</option><option value="new">Uma macro nova</option></select></div>
+          <div class="row"><button class="btn primary" id="btnAi" type="button">Gerar com Claude</button><button class="btn" id="btnAiStop" type="button" hidden>Parar</button></div>
+          <div class="ai-log" id="aiLog"></div>
+          <div class="ai-feedback" id="aiFeedback" hidden></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-h"><h2>Verificar e enviar</h2></div>
+        <div class="panel-b">
+          <div class="row">
+            <button class="btn" id="btnValidate" type="button">Verificar</button>
+            <button class="btn primary" id="btnShare" type="button">Enviar ao celular</button>
+          </div>
+          <div id="validateOut"></div>
+          <div id="shareOut"></div>
+          <div class="row">
+            <button class="btn small" id="btnDriveSave" type="button">Salvar .macro no Drive</button>
+            <button class="btn small" id="btnCopy" type="button">Copiar JSON</button>
+            <button class="btn small" id="btnDownload" type="button">Baixar .json</button>
+          </div>
+          <div class="notice" id="exportOut"></div>
+          <details>
+            <summary class="notice" style="cursor:pointer">Pasta do Drive</summary>
+            <div class="field" style="margin-top:6px"><label class="label" for="driveFolder">ID da pasta</label><input id="driveFolder" autocomplete="off"></div>
+          </details>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<dialog id="picker">
+  <div class="dlg">
+    <div class="dlg-h"><span class="dot" id="pickDot"></span><h2 id="pickTitle">Adicionar</h2><button class="icon-btn" data-close type="button" aria-label="Fechar">✕</button></div>
+    <div class="dlg-search"><input id="pickQ" placeholder="Buscar por nome ou função" autocomplete="off"><span class="notice" id="pickNote"></span></div>
+    <div class="dlg-list" id="pickList"></div>
+  </div>
+</dialog>
+
+<dialog id="manualDlg">
+  <div class="dlg">
+    <div class="dlg-h"><h2>Manual da Oficina de Macros</h2><button class="icon-btn" data-close type="button" aria-label="Fechar">✕</button></div>
+    <div class="manual" id="manualBody">
+      <nav aria-label="Seções do manual">
+        <a href="#man-ideia">Como funciona</a><a href="#man-tela">A tela</a><a href="#man-criar">Criar uma macro</a><a href="#man-ia">Assistente</a>
+        <a href="#man-celular">Levar ao celular</a><a href="#man-abrir">Abrir macros existentes</a><a href="#man-salvar">Onde fica salvo</a><a href="#man-dicas">Dicas e problemas</a>
+      </nav>
+
+      <h3 id="man-ideia">Como funciona</h3>
+      <p>A Oficina monta macros do MacroDroid no computador, com teclado e tela grande, e entrega a macro pronta para o celular. Toda macro tem três partes:</p>
+      <div class="kinds">
+        <div><b><span class="dot k-t"></span>Gatilhos</b>O que dispara a macro: um horário, uma notificação, o carregador. Se houver vários, qualquer um dispara.</div>
+        <div><b><span class="dot k-a"></span>Ações</b>O que a macro faz, em ordem, de cima para baixo.</div>
+        <div><b><span class="dot k-c"></span>Restrições</b>Condições que precisam valer para a macro rodar, como dias da semana ou faixa de horário.</div>
+      </div>
+
+      <h3 id="man-tela">A tela</h3>
+      <ul>
+        <li><b>Minhas macros</b> (à esquerda): suas macros salvas. Clique para abrir; o ✕ apaga, depois de confirmar.</li>
+        <li><b>Editor</b> (centro): nome, descrição, categoria e os blocos. A aba <b>JSON</b> mostra a macro inteira em texto, para quem quiser editar direto.</li>
+        <li><b>Assistente</b> e <b>Verificar e enviar</b> (à direita): criar com ajuda do Claude, verificar e mandar ao celular.</li>
+        <li>O selo no alto do editor mostra se a macro está <b>Não verificada</b>, <b>Válida</b> ou <b>Com problemas</b>.</li>
+      </ul>
+
+      <h3 id="man-criar">Criar uma macro passo a passo</h3>
+      <ol>
+        <li>Clique em <b>＋ Nova macro</b> e dê um nome.</li>
+        <li>Em Gatilhos, clique em <b>＋ Gatilho</b>, busque (por exemplo “notificação” ou “horário”) e escolha.</li>
+        <li>Abra <b>Editar campos</b> no bloco para ajustar os valores. Clique em <b>Ver campos aceitos</b> para ver todas as opções daquele bloco e o que cada número significa.</li>
+        <li>Adicione as <b>ações</b> na ordem em que devem acontecer. Use ↑ e ↓ para reordenar, ＋ para inserir uma ação logo abaixo, ⧉ para duplicar e ● para desativar sem apagar.</li>
+        <li>Se precisar, adicione <b>restrições</b> da macro inteira, ou “＋ Restrição deste item” para valer só para um bloco.</li>
+        <li>Clique em <b>Verificar</b>. Se aparecer algum problema, corrija e verifique de novo.</li>
+      </ol>
+      <p class="tip"><b>Se/Senão e Repetir:</b> ao adicionar “Se”, o “Fim do se” entra junto. As ações entre os dois ficam recuadas e só rodam quando as <b>Condições</b> do “Se” forem verdadeiras. “Repetir” funciona do mesmo jeito, com “Fim do repetir”.</p>
+      <p class="tip"><b>Texto mágico:</b> clique dentro de um campo de texto e depois numa etiqueta como <code>{notification}</code> ou <code>{datetime}</code> para inserir. Para usar variáveis, crie-as em <b>Variáveis locais</b> e escreva <code>{lv=nome}</code>.</p>
+
+      <h3 id="man-ia">Criar com o assistente</h3>
+      <p class="only-site">Funciona na versão do claude.ai.</p>
+      <ol>
+        <li>Descreva em português o que quer. Exemplo: “quando chegar notificação do WhatsApp com a palavra urgente, falar o texto e vibrar, só entre 8h e 22h”.</li>
+        <li>Em <b>Aplicar em</b>, escolha <b>Esta macro</b> para alterar a macro aberta, ou <b>Uma macro nova</b>.</li>
+        <li>Clique em <b>Gerar com Claude</b>. Ele escolhe os blocos, busca os campos exatos no MacroDroid, monta a macro e verifica; se houver erro, ele corrige uma vez.</li>
+        <li>Confira o resultado nos blocos. O comentário dele, logo abaixo, explica o que foi assumido, por exemplo um nome de app ou um horário.</li>
+      </ol>
+
+      <h3 id="man-celular">Levar a macro para o celular</h3>
+      <ul>
+        <li><b>Enviar ao celular</b> (versão do claude.ai): verifica e gera um link com QR code. No celular, toque no link ou leia o QR e o MacroDroid abre a macro pronta para salvar. No computador, o link abre uma página que manda a macro ao celular pelo MacroDroid Remote Control. O link vale 7 dias.</li>
+        <li><b>Salvar .macro no Drive</b> (versão do claude.ai): grava o arquivo na sua pasta “macrodroid” do Google Drive. No celular, abra o arquivo pelo Drive e escolha o MacroDroid.</li>
+        <li><b>Baixar</b>: no site macro.jmctecnologia.com.br, baixa o arquivo <code>.macro</code>; no claude.ai, baixa como <code>.json</code>, e aí é preciso renomear para <code>.macro</code>. Depois, no MacroDroid, use Importar na aba Macros.</li>
+        <li><b>Copiar JSON</b>: copia o texto da macro para colar onde quiser.</li>
+      </ul>
+
+      <h3 id="man-abrir">Abrir macros que você já tem</h3>
+      <ul>
+        <li><b>Abrir arquivo</b>: aceita <code>.macro</code> e backups <code>.mdr</code> exportados pelo MacroDroid (Configurações → Exportar). De um backup, você marca quais macros trazer.</li>
+        <li><b>Abrir do Drive</b> (versão do claude.ai): lista os <code>.macro</code> e <code>.mdr</code> da pasta do Drive. O ID da pasta pode ser trocado em Verificar e enviar → Pasta do Drive.</li>
+      </ul>
+
+      <h3 id="man-salvar">Onde suas macros ficam salvas</h3>
+      <p>Tudo é salvo sozinho segundos depois de cada alteração; o aviso no topo mostra “Salvo”. Na versão do claude.ai as macros ficam na sua conta e aparecem em qualquer navegador. No site macro.jmctecnologia.com.br elas ficam só no navegador em que foram criadas; para levar a outro computador, baixe o arquivo e abra lá.</p>
+
+      <h3 id="man-dicas">Dicas e problemas comuns</h3>
+      <ul>
+        <li><b>“Variável usada mas não declarada”</b>: crie a variável em Variáveis locais com o mesmo nome usado em <code>{lv=…}</code>.</li>
+        <li><b>“Se” sem “Fim do se”</b>: cada Se e cada Repetir precisa do seu fechamento; a verificação aponta quando falta.</li>
+        <li><b>Macro com dois gatilhos que fazem coisas diferentes</b>: use um “Se” com a condição <b>Gatilho que disparou</b>.</li>
+        <li><b>Botões desativados no site</b>: o assistente, o Drive, a verificação e o envio por link dependem da sua conta do claude.ai. Use a versão do claude.ai para eles.</li>
+        <li><b>Pedido de permissão</b>: na primeira vez que usar o MacroDroid, o Drive ou o assistente, o claude.ai pergunta se a página pode usá-los. Escolha Permitir.</li>
+        <li>Na versão do claude.ai, os IDs internos das macros (m_GUID, m_SIGUID) são preservados ao abrir e salvar, então macros que referenciam outras continuam funcionando.</li>
+      </ul>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="driveDlg">
+  <div class="dlg">
+    <div class="dlg-h"><h2 id="driveTitle">Abrir do Google Drive</h2><button class="icon-btn" data-close type="button" aria-label="Fechar">✕</button></div>
+    <div class="dlg-list" id="driveList"></div>
+    <div class="dlg-foot" id="driveFoot"></div>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- JSON sem perda: GUIDs do MacroDroid são inteiros de 64 bits ---------- */
+class Long { constructor(s){ this.s = s; } toString(){ return this.s; } valueOf(){ return Number(this.s); } }
+function parseJSON(t){
+  let i = 0;
+  const ws = () => { while (i < t.length && (t[i] === " " || t[i] === "\n" || t[i] === "\r" || t[i] === "\t")) i++; };
+  const fail = m => { const before = t.slice(0, i); const line = before.split("\n").length; throw new SyntaxError(m + " (linha " + line + ")"); };
+  const ESC = { n:"\n", t:"\t", r:"\r", b:"\b", f:"\f", "/":"/", "\\":"\\", '"':'"' };
+  function str(){
+    i++; let s = ""; let start = i;
+    for (;;) {
+      const c = t[i];
+      if (c === undefined) fail("Texto sem aspas de fechamento");
+      if (c === '"') { s += t.slice(start, i); i++; return s; }
+      if (c === "\\") {
+        s += t.slice(start, i); const e = t[i + 1];
+        if (e === "u") { s += String.fromCharCode(parseInt(t.substr(i + 2, 4), 16)); i += 6; }
+        else if (ESC[e] !== undefined) { s += ESC[e]; i += 2; }
+        else fail("Escape inválido");
+        start = i; continue;
+      }
+      i++;
+    }
+  }
+  function val(){
+    ws(); const c = t[i];
+    if (c === "{") { i++; const o = {}; ws(); if (t[i] === "}") { i++; return o; }
+      for (;;) { ws(); if (t[i] !== '"') fail("Esperava uma chave entre aspas"); const k = str(); ws();
+        if (t[i] !== ":") fail('Esperava ":"'); i++; o[k] = val(); ws();
+        if (t[i] === ",") { i++; continue; } if (t[i] === "}") { i++; return o; } fail('Esperava "," ou "}"'); } }
+    if (c === "[") { i++; const a = []; ws(); if (t[i] === "]") { i++; return a; }
+      for (;;) { a.push(val()); ws(); if (t[i] === ",") { i++; continue; } if (t[i] === "]") { i++; return a; } fail('Esperava "," ou "]"'); } }
+    if (c === '"') return str();
+    if (c === "-" || (c >= "0" && c <= "9")) {
+      const m = /^-?\d+(\.\d+)?([eE][+-]?\d+)?/.exec(t.slice(i, i + 40)); if (!m) fail("Número inválido");
+      i += m[0].length;
+      if (!m[1] && !m[2] && m[0].replace("-", "").length > 15) return new Long(m[0]);
+      return Number(m[0]);
+    }
+    if (t.startsWith("true", i)) { i += 4; return true; }
+    if (t.startsWith("false", i)) { i += 5; return false; }
+    if (t.startsWith("null", i)) { i += 4; return null; }
+    fail("Valor inesperado");
+  }
+  const v = val(); ws(); if (i < t.length) fail("Sobrou texto depois do JSON"); return v;
+}
+function toJSON(v, ind = "", cur = ""){
+  if (v instanceof Long) return v.s;
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "number") return isFinite(v) ? String(v) : "null";
+  if (typeof v === "boolean") return String(v);
+  if (typeof v === "string") return JSON.stringify(v);
+  const nx = ind ? cur + ind : ""; const sep = ind ? ",\n" + nx : ","; const open = ind ? "\n" + nx : ""; const close = ind ? "\n" + cur : "";
+  if (Array.isArray(v)) return v.length ? "[" + open + v.map(x => toJSON(x, ind, nx)).join(sep) + close + "]" : "[]";
+  const ks = Object.keys(v).filter(k => v[k] !== undefined);
+  return ks.length ? "{" + open + ks.map(k => JSON.stringify(k) + (ind ? ": " : ":") + toJSON(v[k], ind, nx)).join(sep) + close + "}" : "{}";
+}
+const pretty = v => toJSON(v, "  ");
+const clone = v => parseJSON(toJSON(v));
+function extractJSON(text){
+  const f = /```(?:json)?\s*([\s\S]*?)```/.exec(text); const body = f ? f[1] : text;
+  const a = body.indexOf("{"), b = body.lastIndexOf("}");
+  if (a < 0 || b < a) throw new SyntaxError("A resposta não trouxe um JSON");
+  return parseJSON(body.slice(a, b + 1));
+}
+
+/* ---------- catálogo ---------- */
+const LABELS = {
+  EmptyTrigger:"Sem gatilho (só manual)", TimerTrigger:"Horário fixo", RegularIntervalTrigger:"Intervalo regular", DayTrigger:"Dia específico",
+  NotificationTrigger:"Notificação recebida", IncomingSMSTrigger:"SMS recebido", IncomingCallTrigger:"Chamada recebida", CallEndedTrigger:"Chamada encerrada",
+  CallMissedTrigger:"Chamada perdida", OutgoingCallTrigger:"Chamada feita", CallActiveTrigger:"Chamada atendida", BatteryLevelTrigger:"Nível de bateria", ExternalPowerTrigger:"Carregador ligado/desligado",
+  ScreenOnOffTrigger:"Tela ligada/desligada", DeviceUnlockedTrigger:"Aparelho desbloqueado", ApplicationLaunchedTrigger:"App aberto/fechado", WifiConnectionTrigger:"Conexão Wi‑Fi",
+  BluetoothTrigger:"Evento Bluetooth", HeadphonesTrigger:"Fones conectados", GeofenceTrigger:"Entrar/sair de área", ShakeDeviceTrigger:"Sacudir o aparelho", FlipDeviceTrigger:"Virar o aparelho",
+  BootTrigger:"Aparelho ligado", WebHookTrigger:"Webhook (URL)", ShortcutTrigger:"Atalho na tela inicial", FloatingButtonTrigger:"Botão flutuante", QuickSettingsTileTrigger:"Bloco de configurações rápidas",
+  ClipboardChangeTrigger:"Área de transferência mudou", CalendarTrigger:"Evento da agenda", ScreenContentTrigger:"Texto aparece na tela", MusicPlayingTrigger:"Música tocando", VariableTrigger:"Variável mudou",
+  SunriseSunsetTrigger:"Nascer/pôr do sol", DataOnOffTrigger:"Conexão de dados", AirplaneModeTrigger:"Modo avião", VolumeButtonTrigger:"Botão de volume", ShareTextTrigger:"Texto compartilhado",
+  MacroFinishedTrigger:"Outra macro terminou", ApplicationInstalledRemovedTrigger:"App instalado/removido", AndroidWearTrigger:"Relógio Wear OS", SMSSentTrigger:"SMS enviado",
+  NotificationAction:"Mostrar notificação", ToastAction:"Mensagem rápida (toast)", SpeakTextAction:"Falar texto", VibrateAction:"Vibrar", SetVolumeAction:"Ajustar volume", SetWifiAction:"Wi‑Fi",
+  SetBluetoothAction:"Bluetooth", SetDataAction:"Dados móveis", SetHotspotAction:"Roteador Wi‑Fi", SetAirplaneModeAction:"Modo avião", SetPriorityMode:"Não perturbe", SetBrightnessAction:"Brilho",
+  CameraFlashLightAction:"Lanterna", LaunchActivityAction:"Abrir app", CloseApplicationAction:"Fechar app", OpenWebPageAction:"Abrir página web", HttpRequestAction:"Requisição HTTP",
+  SendSMSAction:"Enviar SMS", WhatsAppAction:"Enviar WhatsApp", MakeCallAction:"Fazer ligação", RejectCallAction:"Rejeitar chamada", AnswerCallAction:"Atender chamada", SetVariableAction:"Definir variável",
+  PauseAction:"Esperar", IfConditionAction:"Se", ElseIfConditionAction:"Senão, se", ElseAction:"Senão", EndIfAction:"Fim do se", LoopAction:"Repetir", EndLoopAction:"Fim do repetir",
+  BreakFromLoopAction:"Sair do repetir", ContinueLoopAction:"Próxima repetição", ClipboardAction:"Copiar texto", ClearNotificationsAction:"Limpar notificações", NotificationReplyAction:"Responder notificação",
+  NotificationInteractionAction:"Interagir com notificação", UIInteractionAction:"Tocar/interagir na tela", ScreenOnAction:"Ligar/desligar tela", TakeScreenshotAction:"Capturar tela",
+  ForceMacroRunAction:"Executar outra macro", DisableMacroAction:"Ativar/desativar macro", ShellScriptAction:"Comando shell", JavaScriptAction:"JavaScript", TextManipulationAction:"Manipular texto",
+  LogAction:"Registrar no log", FloatingTextAction:"Texto flutuante", MessageDialogAction:"Caixa de mensagem", OptionDialogAction:"Caixa de opções", SelectionDialogAction:"Lista de seleção",
+  WriteToFileAction:"Escrever em arquivo", ReadFileAction:"Ler arquivo", SendEmailAction:"Enviar e‑mail", PlaySoundAction:"Tocar som", ControlMediaAction:"Controlar mídia",
+  ForceScreenRotationAction:"Forçar rotação", StopWatchAction:"Cronômetro", JsonParseAction:"Ler JSON", ActionBlockAction:"Bloco de ações", WaitUntilTriggerAction:"Esperar um gatilho",
+  CancelActiveMacroAction:"Cancelar macro em execução", AiLlmQueryAction:"Perguntar a uma IA", ShareTextAction:"Compartilhar texto", SetAlarmClockAction:"Despertador", ImportMacrosAction:"Importar macros",
+  FloatingButtonConfigureAction:"Configurar botão flutuante", CheckTextOnScreenAction:"Procurar texto na tela", SendIntentAction:"Enviar intent", AndroidWearAction:"Controlar relógio Wear OS",
+  TimeOfDayConstraint:"Faixa de horário", DayOfWeekConstraint:"Dias da semana", BatteryLevelConstraint:"Nível de bateria", ExternalPowerConstraint:"Carregando", ScreenOnOffConstraint:"Tela ligada/desligada",
+  DeviceLockedConstraint:"Bloqueado/desbloqueado", WifiConstraint:"Wi‑Fi", BluetoothConstraint:"Bluetooth", HeadphonesConnectionConstraint:"Fones conectados", GeofenceConstraint:"Dentro/fora de área",
+  ActiveApplicationConstraint:"App em uso", MacroDroidVariableConstraint:"Valor de variável", CompareValueConstraint:"Comparar valores", TriggerThatInvokedConstraint:"Gatilho que disparou",
+  LastRunTimeConstraint:"Tempo desde a última execução", NotificationPresentConstraint:"Notificação presente", InCallConstraint:"Em ligação", PhoneRingingConstraint:"Telefone tocando",
+  DataOnOffConstraint:"Dados móveis", AirplaneModeConstraint:"Modo avião", LogicConstraint:"Lógica E/OU", MusicActiveConstraint:"Música tocando", ProximitySensorConstraint:"Sensor de proximidade",
+  DeviceOrientationConstraint:"Orientação da tela", LightLevelConstraint:"Nível de luz", PriorityModeConstraint:"Não perturbe", MacroEnabledConstraint:"Macro ativada", ModeConstraint:"Modo do MacroDroid",
+  DayOfMonthConstraint:"Dia do mês"
+};
+const FLOW_OPEN = new Set(["IfConditionAction","LoopAction","MutexAction","IfConfirmedThenAction"]);
+const FLOW_MID = new Set(["ElseAction","ElseIfConditionAction","ElseIfConfirmedThenAction"]);
+const FLOW_CLOSE = new Set(["EndIfAction","EndLoopAction","MutexEndAction"]);
+const FLOW_BARE = new Set(["ElseAction","EndIfAction","EndLoopAction","BreakFromLoopAction","ContinueLoopAction","MutexEndAction"]);
+const KIND = { t:{list:"m_triggerList", name:"Gatilho", plural:"triggers"}, a:{list:"m_actionList", name:"Ação", plural:"actions"}, c:{list:"m_constraintList", name:"Restrição", plural:"constraints"} };
+const kindOf = cls => /Trigger$/.test(cls) ? "t" : /Constraint$/.test(cls) ? "c" : "a";
+let catalog = null;          // {t:[{name,desc}], a:[], c:[]}
+let catalogText = "";
+function fallbackCatalog(){
+  const c = { t:[], a:[], c:[] };
+  for (const n of Object.keys(LABELS)) c[kindOf(n)].push({ name:n, desc:"" });
+  return c;
+}
+function parseCatalog(text){
+  const c = { t:[], a:[], c:[] }; let cur = null;
+  for (const line of text.split("\n")) {
+    if (/^## TRIGGERS/.test(line)) cur = "t"; else if (/^## ACTIONS/.test(line)) cur = "a"; else if (/^## CONSTRAINTS/.test(line)) cur = "c";
+    else if (/^---/.test(line) && cur === "c") cur = null;
+    else if (cur) { const m = /^- (\w+): (.*)$/.exec(line); if (m) c[cur].push({ name:m[1], desc:m[2] }); }
+  }
+  return c.t.length && c.a.length ? c : null;
+}
+const label = cls => LABELS[cls] || cls.replace(/(Trigger|Action|Constraint)$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
+
+/* ---------- capacidades ---------- */
+const cl = window.claude;
+const mcpP = cl ? cl.use("mcp").catch(() => null) : Promise.resolve(null);
+const sampleP = cl ? cl.use("sample").catch(() => null) : Promise.resolve(null);
+const dbP = cl ? cl.use("db").catch(() => null) : Promise.resolve(null);
+const userP = cl ? cl.use("user").catch(() => null) : Promise.resolve(null);
+const dlP = cl ? cl.use("downloads").catch(() => null) : Promise.resolve(null);
+const MD = "MacroDroid", GD = "Google Drive";
+const STANDALONE = !cl;
+
+async function mcpCall(server, tool, input, opts){
+  const mcp = await mcpP; if (!mcp) throw { code:"no_mcp" };
+  const r = await mcp.callTool(server, tool, input, opts);
+  let p = r.payload !== undefined ? r.payload : r;
+  if (typeof p === "string") { try { p = JSON.parse(p); } catch (_) {} }
+  return p;
+}
+function mcpErr(e, server){
+  switch (e && e.code) {
+    case "no_mcp": case "not_granted": case "capability_disabled": case "capability_removed":
+      return "Esta visualização não acessa conectores. Abra a página no claude.ai, conectado à sua conta.";
+    case "server_not_connected": case "server_not_found": return `Adicione o conector ${server} em claude.ai → Configurações → Conectores.`;
+    case "needs_reauth": return `Reconecte o ${server} em claude.ai → Configurações → Conectores.`;
+    case "not_in_manifest": case "approval_required": case "consent_required": return `A página precisa da sua permissão para usar o ${server}. Clique de novo e escolha Permitir.`;
+    case "selection_required": return `Escolha qual conector ${server} usar no aviso do claude.ai.`;
+    case "blocked_by_policy": return `Sua organização bloqueia o ${server} aqui.`;
+    case "tool_error": return `O ${server} recusou o pedido: ${String(e.message || "").slice(0, 300)}`;
+    case "server_unavailable": case "rate_limited": return `O ${server} não respondeu agora. Tente de novo em instantes.`;
+    default: return `Não consegui falar com o ${server} (${(e && e.code) || "erro"}).`;
+  }
+}
+function sampleErr(e){
+  switch (e && e.code) {
+    case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+      return "O Claude não está liberado para esta página. Abra no claude.ai e permita o uso quando pedir.";
+    case "rate_limited": return "Muitos pedidos seguidos ou limite de uso atingido. Espere um pouco e tente de novo.";
+    case "session_expired": return "Sua sessão expirou. Entre de novo no claude.ai.";
+    case "refused": return "O Claude não quis atender esse pedido. Reformule a descrição.";
+    case "prompt_too_large": return "A macro é grande demais para o assistente. Peça uma mudança menor.";
+    case "invalid_json": return "A resposta veio fora do formato. Tente de novo.";
+    case "cancelled": return "Parado.";
+    default: return "O assistente falhou agora (" + ((e && e.code) || "erro") + "). Tente de novo.";
+  }
+}
+
+/* ---------- estado ---------- */
+const LS_KEY = "oficina.macros.v1", LS_FOLDER = "oficina.driveFolder";
+const DEFAULT_FOLDER = "1WtogCFRlfRD1eT4uz2LWzNsCBypWghR6";
+let lib = [];                 // [{id, name, category, json, updatedAt}]
+let cur = null;               // {id, wrapper, isExample}
+let store = null;             // {kind:"db"|"local", save(doc), remove(id)}
+let dirty = false, saveTimer = null, lastFocusedField = null;
+
+const M = () => cur.wrapper.macro;
+const newId = () => "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function emptyWrapper(name){
+  return { macroExportVersion:1, macro:{ m_name:name || "Nova macro", m_description:"", m_category:"", m_enabled:true, m_completed:true, m_GUID:0, aiGenerated:1,
+    localVariables:[], m_triggerList:[], m_actionList:[], m_constraintList:[] }, globalVariables:[], userIcons:null };
+}
+function exampleWrapper(){
+  return parseJSON(`{"macroExportVersion":1,"macro":{"m_name":"Modo noite (exemplo)","m_description":"Às 23h, de domingo a quinta, zera o volume do toque e das notificações e avisa com uma vibração.","m_category":"Exemplos","m_enabled":true,"m_completed":true,"m_GUID":0,"aiGenerated":1,"localVariables":[],"m_triggerList":[{"m_classType":"TimerTrigger","m_SIGUID":0,"m_hour":23,"m_minute":0,"m_daysOfWeek":[true,true,true,true,true,true,true],"m_useAlarm":true}],"m_actionList":[{"m_classType":"SetVolumeAction","m_SIGUID":0,"m_streamIndexArray":[false,false,true,true,false,false,false,false],"m_streamVolumeArray":[0,0,0,0,0,0,0,0],"m_volume":-1},{"m_classType":"VibrateAction","m_SIGUID":0,"m_vibratePattern":1},{"m_classType":"ToastAction","m_SIGUID":0,"m_messageText":"Modo noite ativado às {hour}:{minute}","m_position":1}],"m_constraintList":[{"m_classType":"DayOfWeekConstraint","m_SIGUID":0,"m_daysOfWeek":[true,true,true,true,true,false,false]}]},"globalVariables":[],"userIcons":null}`);
+}
+function normalize(obj){
+  // aceita: formato de exportação, objeto de macro solto, ou backup .mdr (retorna lista)
+  if (obj && Array.isArray(obj.macroList)) return { backup:true, macros:obj.macroList, globals:obj.variables || [] };
+  let w;
+  if (obj && obj.macro && typeof obj.macro === "object") w = obj;
+  else if (obj && (obj.m_triggerList || obj.m_actionList)) w = { macroExportVersion:1, macro:obj, globalVariables:[], userIcons:null };
+  else throw new Error("Não reconheci o arquivo como macro do MacroDroid.");
+  const m = w.macro;
+  for (const k of ["m_triggerList","m_actionList","m_constraintList","localVariables"]) if (!Array.isArray(m[k])) m[k] = [];
+  if (!m.m_name) m.m_name = "Sem nome";
+  if (w.macroExportVersion === undefined) w.macroExportVersion = 1;
+  if (!Array.isArray(w.globalVariables)) w.globalVariables = [];
+  if (w.userIcons === undefined) w.userIcons = null;
+  delete w.aiFeedback;
+  return { backup:false, wrapper:w };
+}
+function wrapFromBackup(macro, globals){
+  const w = normalize({ macroExportVersion:1, macro:clone(macro), globalVariables:[], userIcons:null }).wrapper;
+  // leva junto só as variáveis globais que a macro usa
+  const txt = toJSON(macro);
+  w.globalVariables = (globals || []).filter(v => v && v.m_name && (txt.includes("{v=" + v.m_name + "}") || txt.includes('"' + v.m_name + '"'))).map(clone);
+  return w;
+}
+
+/* ---------- armazenamento ---------- */
+function lsRead(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch (_) { return []; } }
+function lsWrite(){ try { localStorage.setItem(LS_KEY, JSON.stringify(lib)); return true; } catch (_) { return false; } }
+async function initStore(){
+  const [db, user] = await Promise.all([dbP, userP]);
+  let uid = null;
+  if (db && user) { try { uid = await user.id(); } catch (_) {} }
+  if (db && uid) {
+    const col = db.collection("data/users/" + uid); let firstSnap = true;
+    store = { kind:"db",
+      save: d => col.doc(d.id).set({ name:d.name, category:d.category || "", json:d.json, updatedAt:d.updatedAt }),
+      remove: id => col.doc(id).delete() };
+    $("#libWhere").textContent = "na sua conta";
+    col.onSnapshot(snap => {
+      const remote = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      lib = remote;
+      renderLib();
+      if (firstSnap) { firstSnap = false; openLatestIfExample(); }
+    }, e => { $("#libWhere").textContent = "sem sincronizar (" + e.code + ")"; });
+    // traz rascunhos antigos guardados só neste navegador
+    const local = lsRead();
+    for (const d of local) if (d && d.id && d.json) { try { await store.save(d); } catch (_) {} }
+    if (local.length) { try { localStorage.removeItem(LS_KEY); } catch (_) {} }
+  } else {
+    store = { kind:"local", save: d => { const i = lib.findIndex(x => x.id === d.id); if (i >= 0) lib[i] = d; else lib.push(d); if (!lsWrite()) throw { code:"local" }; renderLib(); return Promise.resolve(); },
+      remove: id => { lib = lib.filter(x => x.id !== id); lsWrite(); renderLib(); return Promise.resolve(); } };
+    lib = lsRead();
+    $("#libWhere").textContent = "neste navegador";
+    renderLib(); openLatestIfExample();
+  }
+}
+function openLatestIfExample(){
+  if (!lib.length || !cur || !cur.isExample) return;
+  const d = lib.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+  try { openWrapper(normalize(parseJSON(d.json)).wrapper, d.id); } catch (_) {}
+}
+function markDirty(){
+  dirty = true; setStatus(); cur.validated = null;
+  if (cur.isExample) { cur.isExample = false; cur.id = newId(); $("#exampleBanner").hidden = true; }
+  $("#saveState").textContent = "Alterações não salvas";
+  clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 1200);
+}
+async function saveNow(){
+  if (!dirty || !cur || cur.isExample || !store) return;
+  dirty = false;
+  const d = { id:cur.id, name:M().m_name || "Sem nome", category:M().m_category || "", json:toJSON(cur.wrapper), updatedAt:Date.now() };
+  const i = lib.findIndex(x => x.id === d.id); if (i >= 0) lib[i] = d; else lib.push(d);
+  renderLib();
+  $("#saveState").textContent = "Salvando…";
+  try { await store.save(d); $("#saveState").textContent = "Salvo"; }
+  catch (e) { dirty = true; $("#saveState").textContent = e && e.code === "quota_exceeded" ? "Espaço cheio: apague macros antigas" : "Não salvou. Tentarei na próxima alteração."; }
+}
+
+/* ---------- biblioteca ---------- */
+let pendingDelete = null;
+function renderLib(){
+  const list = $("#libList");
+  const items = lib.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  $("#libCount").textContent = items.length ? "(" + items.length + ")" : "";
+  if (!items.length) { list.innerHTML = `<p class="lib-empty">Nenhuma macro salva ainda. Crie uma nova, abra um arquivo ou peça ao assistente.</p>`; return; }
+  list.innerHTML = items.map(d => {
+    const when = d.updatedAt ? new Date(d.updatedAt).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "";
+    return `<div><div class="row" style="flex-wrap:nowrap;gap:2px"><button class="lib-item${cur && cur.id === d.id ? " on" : ""}" data-open="${esc(d.id)}" type="button"><span class="nm"><b>${esc(d.name)}</b><small>${esc(d.category || "Sem categoria")} · ${when}</small></span></button>
+      <button class="icon-btn" data-del="${esc(d.id)}" type="button" aria-label="Apagar ${esc(d.name)}">✕</button></div>
+      ${pendingDelete === d.id ? `<div class="confirm-del">Apagar esta macro? <button class="btn small" data-delyes="${esc(d.id)}" type="button">Apagar</button><button class="btn small" data-delno type="button">Manter</button></div>` : ""}</div>`;
+  }).join("");
+}
+$("#libList").addEventListener("click", async ev => {
+  const o = ev.target.closest("[data-open]"), d = ev.target.closest("[data-del]"), y = ev.target.closest("[data-delyes]"), n = ev.target.closest("[data-delno]");
+  if (o) { await saveNow(); const doc = lib.find(x => x.id === o.dataset.open); if (doc) { try { openWrapper(normalize(parseJSON(doc.json)).wrapper, doc.id); } catch (e) { flash("#exportOut", "Não consegui abrir: " + e.message, "bad"); } } }
+  else if (d) { pendingDelete = d.dataset.del; renderLib(); }
+  else if (n) { pendingDelete = null; renderLib(); }
+  else if (y) { const id = y.dataset.delyes; pendingDelete = null; lib = lib.filter(x => x.id !== id); renderLib(); try { await store.remove(id); } catch (_) {}
+    if (cur && cur.id === id) { cur.id = newId(); dirty = true; $("#saveState").textContent = "Macro aberta não está mais salva"; } }
+});
+
+/* ---------- abrir / render ---------- */
+function openWrapper(w, id, isExample){
+  cur = { id:id || newId(), wrapper:w, isExample:!!isExample, validated:null };
+  dirty = false; $("#saveState").textContent = isExample ? "" : "Salvo";
+  $("#exampleBanner").hidden = !isExample;
+  $("#shareOut").innerHTML = ""; $("#validateOut").innerHTML = ""; $("#aiFeedback").hidden = true;
+  if (window.innerWidth < 820) $("#libBox").open = false;
+  renderAll(); renderLib();
+}
+function renderAll(){
+  const m = M();
+  $("#mName").value = m.m_name || ""; $("#mDesc").value = m.m_description || ""; $("#mCat").value = m.m_category || "";
+  $("#mEnabled").checked = m.m_enabled !== false; $("#mOr").checked = !!m.m_isOrCondition;
+  renderLists(); renderVars(); setStatus();
+  if (!$("#viewJson").hidden) $("#jsonArea").value = pretty(cur.wrapper);
+}
+function renderLists(){
+  const m = M();
+  for (const k of ["t","a","c"]) {
+    const list = m[KIND[k].list]; const el = $("#list" + k.toUpperCase());
+    $("#cnt" + k.toUpperCase()).textContent = list.length ? String(list.length) : "";
+    if (!list.length) { el.innerHTML = `<div class="empty-sec">${k === "t" ? "Sem gatilho a macro só roda manualmente. Adicione um, ou use “Sem gatilho”." : k === "a" ? "Nenhuma ação ainda." : "Sem restrições: a macro roda sempre que um gatilho disparar."}</div>`; continue; }
+    let depth = 0;
+    el.innerHTML = list.map((it, i) => {
+      const cls = it.m_classType;
+      if (k === "a" && (FLOW_CLOSE.has(cls) || FLOW_MID.has(cls))) depth = Math.max(0, depth - 1);
+      const html = itemHTML(it, k + ":" + i, k, k === "a" ? depth : 0);
+      if (k === "a" && (FLOW_OPEN.has(cls) || FLOW_MID.has(cls))) depth++;
+      return html;
+    }).join("");
+  }
+}
+function summarize(it){
+  const skip = new Set(["m_classType","m_SIGUID","m_constraintList","m_isDisabled","m_isOrCondition","disableLogging","m_comment","childrenCollapsed","dontLogIfConditionIsFalse"]);
+  const parts = [];
+  if (it.m_comment) parts.push("“" + it.m_comment + "”");
+  for (const [k, v] of Object.entries(it)) {
+    if (skip.has(k) || v === null || v === "" || v === false) continue;
+    let s;
+    if (Array.isArray(v)) s = v.length && v.every(x => typeof x === "boolean") ? v.filter(Boolean).length + "/" + v.length : v.length ? "[" + v.slice(0, 2).map(x => typeof x === "object" && x && !(x instanceof Long) ? "…" : String(x)).join(", ") + (v.length > 2 ? ", …" : "") + "]" : null;
+    else if (v && typeof v === "object" && !(v instanceof Long)) s = "{…}";
+    else s = String(v);
+    if (s === null) continue;
+    if (s.length > 48) s = s.slice(0, 46) + "…";
+    parts.push(k.replace(/^m_/, "") + ": " + s);
+    if (parts.length >= 5) break;
+  }
+  return parts.join(" · ");
+}
+function itemParams(it){ const o = {}; for (const [k, v] of Object.entries(it)) if (k !== "m_classType" && k !== "m_constraintList") o[k] = v; return o; }
+function itemHTML(it, path, k, depth){
+  const cls = it.m_classType || "?"; const sub = path.includes("/");
+  const bare = FLOW_BARE.has(cls) && Object.keys(itemParams(it)).every(x => ["m_SIGUID","m_isDisabled","m_isOrCondition","disableLogging","m_comment"].includes(x));
+  const isCond = cls === "IfConditionAction" || cls === "ElseIfConditionAction" || (cls === "LoopAction" && (it.m_option === 1 || it.m_option === 2));
+  const cons = Array.isArray(it.m_constraintList) ? it.m_constraintList : [];
+  const tools = `<div class="item-tools">
+    ${k === "a" && !sub ? `<button class="icon-btn" data-act="insert" data-path="${path}" type="button" title="Inserir ação abaixo" aria-label="Inserir ação abaixo">＋</button>` : ""}
+    <button class="icon-btn" data-act="up" data-path="${path}" type="button" title="Subir" aria-label="Subir">↑</button>
+    <button class="icon-btn" data-act="down" data-path="${path}" type="button" title="Descer" aria-label="Descer">↓</button>
+    <button class="icon-btn" data-act="dup" data-path="${path}" type="button" title="Duplicar" aria-label="Duplicar">⧉</button>
+    <button class="icon-btn" data-act="toggle" data-path="${path}" type="button" title="${it.m_isDisabled ? "Ativar" : "Desativar"}" aria-label="${it.m_isDisabled ? "Ativar" : "Desativar"}">${it.m_isDisabled ? "○" : "●"}</button>
+    <button class="icon-btn" data-act="del" data-path="${path}" type="button" title="Remover" aria-label="Remover">✕</button></div>`;
+  const head = `<div class="item-head"><div class="item-title"><b>${esc(label(cls))}</b><code>${esc(cls)}</code></div>${tools}</div>`;
+  const ind = depth ? ` style="margin-left:${Math.min(depth, 6) * 18}px"` : "";
+  if (bare) return `<div class="item k-${k} flow${it.m_isDisabled ? " off" : ""}"${ind} data-item="${path}">${head}</div>`;
+  const sum = summarize(it);
+  const consHTML = sub ? "" : (cons.length || isCond) ? `<div class="subcons"><div class="row"><span class="label">${isCond ? "Condições" : "Restrições deste item"}</span>
+      <button class="btn small" data-act="addsub" data-path="${path}" type="button">＋ ${isCond ? "Condição" : "Restrição"}</button>
+      ${cons.length > 1 ? `<label class="row notice"><input type="checkbox" data-act="subor" data-path="${path}"${it.m_isOrCondition ? " checked" : ""}> lógica OU</label>` : ""}</div>
+      ${cons.map((c, j) => itemHTML(c, path + "/" + j, "c", 0)).join("")}</div>`
+    : `<div><button class="btn small" data-act="addsub" data-path="${path}" type="button">＋ Restrição deste item</button></div>`;
+  return `<div class="item k-${k}${it.m_isDisabled ? " off" : ""}"${ind} data-item="${path}">${head}
+    ${sum ? `<div class="item-sum">${esc(sum)}</div>` : ""}
+    <div class="item-body">
+      <details><summary>Editar campos</summary>
+        <textarea class="code" data-edit="${path}" spellcheck="false">${esc(pretty(itemParams(it)))}</textarea>
+        <div class="err" data-err="${path}"></div>
+        <div class="row"><button class="btn small" data-act="ref" data-path="${path}" type="button">Ver campos aceitos</button><span class="notice" data-refnote="${path}"></span></div>
+        <pre class="refbox" data-ref="${path}" hidden></pre>
+      </details>
+      ${k === "c" ? "" : consHTML}
+    </div></div>`;
+}
+function resolve(path){
+  const [top, sub] = path.split("/"); const [k, i] = top.split(":");
+  const list = M()[KIND[k].list]; const item = list[+i];
+  if (sub === undefined) return { list, idx:+i, item, k };
+  if (!Array.isArray(item.m_constraintList)) item.m_constraintList = [];
+  return { list:item.m_constraintList, idx:+sub, item:item.m_constraintList[+sub], k:"c", parent:item };
+}
+
+/* edição dos blocos */
+const editor = $("#viewBlocks");
+editor.addEventListener("click", ev => {
+  const add = ev.target.closest("[data-add]"); if (add) { openPicker({ kind:add.dataset.add }); return; }
+  const chip = ev.target.closest("[data-magic]"); if (chip) { insertMagic(chip.dataset.magic); return; }
+  const b = ev.target.closest("[data-act]"); if (!b || b.tagName === "INPUT") return;
+  const path = b.dataset.path; const r = resolve(path); const act = b.dataset.act;
+  if (act === "ref") { showRef(path, r.item.m_classType); return; }
+  if (act === "addsub") { openPicker({ kind:"c", sub:path }); return; }
+  if (act === "insert") { openPicker({ kind:"a", at:r.idx + 1 }); return; }
+  if (act === "up" && r.idx > 0) [r.list[r.idx - 1], r.list[r.idx]] = [r.list[r.idx], r.list[r.idx - 1]];
+  else if (act === "down" && r.idx < r.list.length - 1) [r.list[r.idx + 1], r.list[r.idx]] = [r.list[r.idx], r.list[r.idx + 1]];
+  else if (act === "dup") { const c = clone(r.item); if (c.m_SIGUID !== undefined) c.m_SIGUID = 0; r.list.splice(r.idx + 1, 0, c); }
+  else if (act === "toggle") { if (r.item.m_isDisabled) delete r.item.m_isDisabled; else r.item.m_isDisabled = true; }
+  else if (act === "del") r.list.splice(r.idx, 1);
+  else return;
+  markDirty(); renderLists();
+});
+editor.addEventListener("change", ev => {
+  const b = ev.target.closest("[data-act='subor']");
+  if (b) { const it = resolve(b.dataset.path).item; it.m_isOrCondition = b.checked; markDirty(); }
+});
+const editTimers = new Map();
+editor.addEventListener("input", ev => {
+  const ta = ev.target.closest("textarea[data-edit]"); if (!ta) return;
+  const path = ta.dataset.edit;
+  clearTimeout(editTimers.get(path));
+  editTimers.set(path, setTimeout(() => commitEdit(ta, path), 450));
+});
+editor.addEventListener("focusin", ev => { if (ev.target.matches("textarea, input[type=text], input:not([type])")) lastFocusedField = ev.target; });
+function commitEdit(ta, path){
+  const errEl = editor.querySelector(`[data-err="${CSS.escape(path)}"]`);
+  let obj;
+  try { obj = parseJSON(ta.value); if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new SyntaxError("Os campos precisam ser um objeto { … }"); }
+  catch (e) { if (errEl) errEl.textContent = e.message; return; }
+  if (errEl) errEl.textContent = "";
+  const r = resolve(path); const old = r.item;
+  const next = { m_classType:old.m_classType, ...obj }; if (old.m_constraintList) next.m_constraintList = old.m_constraintList;
+  r.list[r.idx] = next;
+  const sumEl = editor.querySelector(`[data-item="${CSS.escape(path)}"] > .item-sum`);
+  if (sumEl) sumEl.textContent = summarize(next);
+  markDirty();
+}
+const schemaCache = new Map();
+async function schemaFor(classes){
+  // classes: {t:[],a:[],c:[]}
+  const input = { triggers:classes.t || [], actions:classes.a || [], constraints:classes.c || [] };
+  const key = JSON.stringify(input);
+  if (schemaCache.has(key)) return schemaCache.get(key);
+  const p = await mcpCall(MD, "get_macrodroid_schema", input, { cache:{ staleTime:300000, gcTime:86400000 } });
+  const text = typeof p === "string" ? p : (p && p.text) || "";
+  schemaCache.set(key, text); return text;
+}
+function blockOf(text, cls){
+  const lines = text.split("\n"); const start = lines.findIndex(l => l === "    " + cls + ":");
+  if (start < 0) return "";
+  let end = start + 1;
+  while (end < lines.length && !/^    [A-Za-z]\w*:$/.test(lines[end]) && !/^# ===/.test(lines[end]) && !/^## /.test(lines[end]) && !/^[a-z_]+:$/.test(lines[end])) end++;
+  return lines.slice(start, end).join("\n").replace(/^ {4}/gm, "");
+}
+async function showRef(path, cls){
+  const box = editor.querySelector(`[data-ref="${CSS.escape(path)}"]`), note = editor.querySelector(`[data-refnote="${CSS.escape(path)}"]`);
+  if (!box.hidden) { box.hidden = true; return; }
+  note.textContent = "Buscando no MacroDroid…"; note.className = "notice";
+  try {
+    const k = kindOf(cls); const text = await schemaFor({ [k]:[cls] });
+    const blk = blockOf(text, cls);
+    box.textContent = blk || "O catálogo não trouxe detalhes para " + cls + ".";
+    box.hidden = false; note.textContent = "";
+  } catch (e) { note.textContent = mcpErr(e, MD); note.className = "notice bad"; }
+}
+
+/* meta */
+$("#mName").addEventListener("input", e => { M().m_name = e.target.value; markDirty(); });
+$("#mDesc").addEventListener("input", e => { M().m_description = e.target.value; markDirty(); });
+$("#mCat").addEventListener("input", e => { M().m_category = e.target.value; markDirty(); });
+$("#mEnabled").addEventListener("change", e => { M().m_enabled = e.target.checked; markDirty(); });
+$("#mOr").addEventListener("change", e => { M().m_isOrCondition = e.target.checked; markDirty(); });
+
+/* variáveis locais */
+const VTYPES = [["0","Sim/não"],["1","Inteiro"],["2","Texto"],["3","Decimal"],["4","Dicionário"],["5","Lista"]];
+function varValue(v){ switch (+v.m_type) { case 0: return v.m_booleanValue ? "true" : "false"; case 1: return String(v.m_intValue ?? 0); case 2: return v.m_stringValue ?? ""; case 3: return String(v.m_decimalValue ?? 0); default: return ""; } }
+function renderVars(){
+  const vs = M().localVariables; $("#cntV").textContent = vs.length ? String(vs.length) : "";
+  $("#listV").innerHTML = vs.length ? vs.map((v, i) => `<div class="var-row">
+      <input data-v="${i}" data-f="name" value="${esc(v.m_name || "")}" aria-label="Nome da variável">
+      <select data-v="${i}" data-f="type" aria-label="Tipo">${VTYPES.map(([val, t]) => `<option value="${val}"${String(v.m_type) === val ? " selected" : ""}>${t}</option>`).join("")}</select>
+      ${+v.m_type === 0 ? `<select class="vv" data-v="${i}" data-f="val" aria-label="Valor"><option value="false">falso</option><option value="true"${v.m_booleanValue ? " selected" : ""}>verdadeiro</option></select>`
+        : +v.m_type >= 4 ? `<span class="vv notice">edite na aba JSON</span>` : `<input class="vv" data-v="${i}" data-f="val" value="${esc(varValue(v))}" aria-label="Valor inicial">`}
+      <button class="icon-btn" data-vdel="${i}" type="button" aria-label="Remover variável">✕</button></div>`).join("")
+    : `<div class="empty-sec">Use {lv=nome} nos textos depois de criar a variável aqui.</div>`;
+}
+$("#btnAddVar").addEventListener("click", () => { M().localVariables.push({ m_name:"variavel" + (M().localVariables.length + 1), m_type:2, m_stringValue:"", isLocalVar:true }); markDirty(); renderVars(); });
+$("#listV").addEventListener("click", e => { const d = e.target.closest("[data-vdel]"); if (d) { M().localVariables.splice(+d.dataset.vdel, 1); markDirty(); renderVars(); } });
+$("#listV").addEventListener("change", e => {
+  const el = e.target.closest("[data-v]"); if (!el) return; const v = M().localVariables[+el.dataset.v]; const f = el.dataset.f;
+  if (f === "name") v.m_name = el.value.trim();
+  else if (f === "type") { const old = varValue(v); for (const k of ["m_booleanValue","m_intValue","m_stringValue","m_decimalValue","dictionary"]) delete v[k]; v.m_type = +el.value; setVar(v, old); if (v.m_type >= 4) v.dictionary = { entries:[], isArray:v.m_type === 5 }; renderVars(); }
+  else setVar(v, el.value);
+  markDirty();
+});
+function setVar(v, s){ switch (+v.m_type) { case 0: v.m_booleanValue = s === "true"; break; case 1: v.m_intValue = /^-?\d{16,}$/.test(s) ? new Long(s) : (parseInt(s, 10) || 0); break; case 2: v.m_stringValue = s; break; case 3: v.m_decimalValue = parseFloat(String(s).replace(",", ".")) || 0; break; } }
+
+/* texto mágico */
+const MAGIC = ["{datetime}","{hour}:{minute}","{dayofweek}","{battery}","{not_title}","{notification}","{not_app_name}","{sms_message}","{sms_number}","{call_number}","{call_name}","{clipboard}","{ssid}","{lv=nome}","{v=nome}"];
+$("#magicChips").innerHTML = MAGIC.map(m => `<button class="chip" data-magic="${esc(m)}" type="button">${esc(m)}</button>`).join("");
+function insertMagic(text){
+  const f = lastFocusedField;
+  if (f && document.body.contains(f)) {
+    const s = f.selectionStart ?? f.value.length, e = f.selectionEnd ?? s;
+    f.value = f.value.slice(0, s) + text + f.value.slice(e); f.focus(); f.selectionStart = f.selectionEnd = s + text.length;
+    f.dispatchEvent(new Event("input", { bubbles:true }));
+  } else copyText(text, "#exportOut");
+}
+
+/* abas */
+function showTab(json){
+  $("#tabBlocks").setAttribute("aria-selected", String(!json)); $("#tabJson").setAttribute("aria-selected", String(json));
+  $("#viewBlocks").hidden = json; $("#viewJson").hidden = !json;
+  if (json) { $("#jsonArea").value = pretty(cur.wrapper); $("#jsonErr").textContent = ""; } else renderAll();
+}
+$("#tabBlocks").addEventListener("click", () => showTab(false));
+$("#tabJson").addEventListener("click", () => showTab(true));
+$("#btnApplyJson").addEventListener("click", () => {
+  try { const n = normalize(parseJSON($("#jsonArea").value)); if (n.backup) throw new Error("Isso é um backup .mdr. Use “Abrir arquivo” para escolher a macro."); cur.wrapper = n.wrapper; markDirty(); $("#jsonErr").textContent = ""; flash("#exportOut", "JSON aplicado.", "ok"); }
+  catch (e) { $("#jsonErr").textContent = e.message; }
+});
+
+/* ---------- seletor de recursos ---------- */
+let pickTarget = null;
+async function openPicker(target){
+  pickTarget = target; const k = target.kind;
+  $("#pickTitle").textContent = target.sub ? "Adicionar condição/restrição" : "Adicionar " + KIND[k].name.toLowerCase();
+  $("#pickDot").className = "dot k-" + k;
+  $("#pickQ").value = ""; renderPick(); $("#picker").showModal(); $("#pickQ").focus();
+  if (!catalog || catalog.fallback) {
+    $("#pickNote").textContent = "Carregando o catálogo completo do MacroDroid…";
+    await loadCatalog();
+    renderPick();
+  }
+}
+async function loadCatalog(){
+  if (catalog && !catalog.fallback) return true;
+  try {
+    const p = await mcpCall(MD, "list_macrodroid_features", {}, { cache:{ staleTime:300000, gcTime:86400000 } });
+    const text = typeof p === "string" ? p : (p && p.text) || "";
+    const c = parseCatalog(text);
+    if (c) { catalog = c; catalogText = text.split("\n---")[1] ? text.slice(text.indexOf("## TRIGGERS"), text.indexOf("Selection rules")) : text; $("#pickNote").textContent = ""; return true; }
+    throw { code:"parse" };
+  } catch (e) {
+    catalog = Object.assign(fallbackCatalog(), { fallback:true });
+    $("#pickNote").textContent = e.code === "parse" ? "Mostrando os recursos mais usados." : "Mostrando os mais usados. " + mcpErr(e, MD);
+    return false;
+  }
+}
+function renderPick(){
+  const k = pickTarget.kind; const q = $("#pickQ").value.trim().toLowerCase();
+  const cat = (catalog || fallbackCatalog())[k] || [];
+  const rows = cat.filter(x => !q || (x.name + " " + label(x.name) + " " + x.desc).toLowerCase().includes(q))
+    .sort((a, b) => (LABELS[b.name] ? 1 : 0) - (LABELS[a.name] ? 1 : 0));
+  $("#pickList").innerHTML = rows.length ? rows.map(x => `<button class="pick" data-pick="${esc(x.name)}" type="button"><span class="dot k-${k}"></span><span><b>${esc(label(x.name))}</b><code>${esc(x.name)}</code>${x.desc ? `<small>${esc(x.desc.slice(0, 180))}</small>` : ""}</span></button>`).join("")
+    : `<p class="notice" style="padding:10px">Nada encontrado para “${esc(q)}”.</p>`;
+}
+$("#pickQ").addEventListener("input", renderPick);
+$("#pickList").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-pick]"); if (!b) return;
+  addItem(b.dataset.pick); $("#picker").close();
+});
+const DEFAULTS = {
+  TimerTrigger:{ m_hour:8, m_minute:0, m_daysOfWeek:[true,true,true,true,true,true,true], m_useAlarm:true },
+  RegularIntervalTrigger:{ m_seconds:3600 }, DayOfWeekConstraint:{ m_daysOfWeek:[true,true,true,true,true,true,true] },
+  ToastAction:{ m_messageText:"" }, PauseAction:{}, LoopAction:{ m_option:0, m_fixedOptionCount:3 },
+  VibrateAction:{ m_vibratePattern:1 }, IfConditionAction:{}, ElseIfConditionAction:{}
+};
+function addItem(cls){
+  const t = pickTarget; const item = { m_classType:cls, m_SIGUID:0, ...(DEFAULTS[cls] ? clone(DEFAULTS[cls]) : {}) };
+  if (FLOW_OPEN.has(cls) || cls === "ElseIfConditionAction") item.m_constraintList = [];
+  if (t.sub) { const it = resolve(t.sub).item; if (!Array.isArray(it.m_constraintList)) it.m_constraintList = []; it.m_constraintList.push(item); }
+  else {
+    const list = M()[KIND[t.kind].list]; const at = t.at ?? list.length;
+    const add = [item];
+    if (cls === "IfConditionAction") add.push({ m_classType:"EndIfAction", m_SIGUID:0 });
+    if (cls === "LoopAction") add.push({ m_classType:"EndLoopAction", m_SIGUID:0 });
+    if (cls === "MutexAction") add.push({ m_classType:"MutexEndAction", m_SIGUID:0 });
+    list.splice(at, 0, ...add);
+  }
+  markDirty(); renderLists();
+  // abre o editor do item novo
+  requestAnimationFrame(() => {
+    const items = [...editor.querySelectorAll(".item")].filter(el => el.querySelector("code") && el.querySelector("code").textContent === cls);
+    const el = items[items.length - 1]; if (!el) return;
+    const det = el.querySelector("details"); if (det) det.open = true;
+    el.scrollIntoView({ block:"nearest", behavior:"smooth" });
+  });
+}
+document.addEventListener("click", ev => { const c = ev.target.closest("[data-close]"); if (c) c.closest("dialog").close(); });
+
+/* ---------- verificar / enviar ---------- */
+function setStatus(state, text){
+  const chip = $("#statusChip"); chip.className = "status" + (state ? " " + state : "");
+  chip.textContent = text || (cur && cur.validated === true ? "Válida" : cur && cur.validated === false ? "Com problemas" : "Não verificada");
+}
+const exportText = () => { const w = clone(cur.wrapper); delete w.aiFeedback; return toJSON(w); };
+async function validate(){
+  setStatus("busy", "Verificando…"); const out = $("#validateOut"); out.innerHTML = "";
+  try {
+    const p = await mcpCall(MD, "validate_macrodroid_macro", { macro_json:exportText() });
+    const ok = p && (p.valid === true || /^VALID/.test(p.text || ""));
+    cur.validated = !!ok; setStatus(ok ? "ok" : "bad");
+    const probs = (p && p.problems) || [];
+    out.innerHTML = ok ? `<p class="notice ok">${esc((p.text || "Válida").split("\n")[0])}</p>` : `<ul class="problems">${probs.map(x => `<li>${esc(x)}</li>`).join("") || `<li>${esc(p.text || "Inválida")}</li>`}</ul>`;
+    return { ok, problems:probs };
+  } catch (e) { setStatus(); out.innerHTML = `<p class="notice bad">${esc(mcpErr(e, MD))}</p>`; return { ok:null }; }
+}
+$("#btnValidate").addEventListener("click", validate);
+$("#btnShare").addEventListener("click", async () => {
+  const btn = $("#btnShare"); btn.disabled = true; const out = $("#shareOut"); out.innerHTML = "";
+  try {
+    const v = await validate(); if (v.ok !== true) return;
+    out.innerHTML = `<p class="notice">Gerando o link…</p>`;
+    const p = await mcpCall(MD, "share_macrodroid_macro", { macro_json:exportText() });
+    const blob = typeof p === "string" ? p : JSON.stringify(p);
+    const m = /https:\/\/[^\s"'<>\\)]+/.exec(blob);
+    if (!m) { out.innerHTML = `<p class="notice bad">O MacroDroid não devolveu um link.</p>`; return; }
+    const url = m[0];
+    out.innerHTML = `<div class="share-out"><span class="label">Link para importar</span><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>
+      <div class="row"><button class="btn small" id="btnCopyLink" type="button">Copiar link</button></div>
+      <div class="qr" id="qrBox"></div>
+      <span class="notice">No celular, toque no link (ou leia o QR) e o MacroDroid abre a macro pronta para salvar. No computador, o link abre uma página que manda a macro ao celular pelo MacroDroid Remote Control. Vale por 7 dias.</span></div>`;
+    $("#btnCopyLink").addEventListener("click", () => copyText(url, "#exportOut"));
+    if (window.QRCode) { try { new QRCode($("#qrBox"), { text:url, width:168, height:168, colorDark:"#15202b", colorLight:"#ffffff", correctLevel:QRCode.CorrectLevel.M }); } catch (_) { $("#qrBox").remove(); } }
+    else $("#qrBox").remove();
+  } catch (e) { out.innerHTML = `<p class="notice bad">${esc(mcpErr(e, MD))}</p>`; }
+  finally { btn.disabled = false; }
+});
+function flash(sel, msg, kind){ const el = $(sel); el.className = "notice" + (kind ? " " + kind : ""); el.textContent = msg; }
+async function copyText(text, sel){
+  try { await navigator.clipboard.writeText(text); flash(sel, "Copiado.", "ok"); }
+  catch (_) { flash(sel, "Não deu para copiar automaticamente. Use a aba JSON e copie à mão.", "bad"); }
+}
+$("#btnCopy").addEventListener("click", () => copyText(pretty(cur.wrapper), "#exportOut"));
+const fileBase = () => (M().m_name || "macro").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_").slice(0, 80) || "macro";
+$("#btnDownload").addEventListener("click", async () => {
+  const dl = await dlP;
+  if (!dl) {
+    if (STANDALONE) {
+      // fora do claude.ai o navegador baixa direto, já com a extensão .macro
+      const url = URL.createObjectURL(new Blob([pretty(cur.wrapper)], { type:"application/json" }));
+      const a = document.createElement("a"); a.href = url; a.download = fileBase() + ".macro"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      flash("#exportOut", "Baixado como " + fileBase() + ".macro. No celular, abra o arquivo com o MacroDroid.", "ok"); return;
+    }
+    flash("#exportOut", "Download indisponível aqui. Use “Salvar .macro no Drive” ou “Copiar JSON”.", "bad"); return;
+  }
+  try { await dl.save({ filename:fileBase() + ".json", data:pretty(cur.wrapper) }); flash("#exportOut", "Arquivo salvo. Renomeie para .macro antes de importar no MacroDroid.", "ok"); }
+  catch (e) { flash("#exportOut", e.code === "declined" ? "Download cancelado." : "Não foi possível baixar (" + e.code + ").", e.code === "declined" ? "" : "bad"); }
+});
+const folderId = () => $("#driveFolder").value.trim() || DEFAULT_FOLDER;
+try { $("#driveFolder").value = localStorage.getItem(LS_FOLDER) || DEFAULT_FOLDER; } catch (_) { $("#driveFolder").value = DEFAULT_FOLDER; }
+$("#driveFolder").addEventListener("change", () => { try { localStorage.setItem(LS_FOLDER, $("#driveFolder").value.trim()); } catch (_) {} });
+$("#btnDriveSave").addEventListener("click", async () => {
+  const b = $("#btnDriveSave"); b.disabled = true; flash("#exportOut", "Enviando para o Google Drive…");
+  try {
+    const p = await mcpCall(GD, "create_file", { title:fileBase() + ".macro", parentId:folderId(), textContent:pretty(cur.wrapper), contentMimeType:"application/json", disableConversionToGoogleType:true });
+    const link = p && (p.viewUrl || p.webViewLink);
+    const el = $("#exportOut"); el.className = "notice ok";
+    el.innerHTML = "Salvo no Drive como " + esc(fileBase()) + ".macro" + (link ? ` · <a href="${esc(link)}" target="_blank" rel="noopener">abrir</a>` : "") + ". No celular, abra o arquivo e escolha MacroDroid.";
+  } catch (e) { flash("#exportOut", mcpErr(e, GD), "bad"); }
+  finally { b.disabled = false; }
+});
+
+/* ---------- abrir arquivo / Drive ---------- */
+function handleParsed(obj, sourceName){
+  const n = normalize(obj);
+  if (!n.backup) { saveNow(); openWrapper(n.wrapper, newId()); markDirty(); return; }
+  showBackupPicker(n, sourceName);
+}
+$("#fileIn").addEventListener("change", ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { handleParsed(parseJSON(String(rd.result).replace(/^﻿/, "")), f.name); } catch (e) { flash("#exportOut", "Arquivo inválido: " + e.message, "bad"); } ev.target.value = ""; };
+  rd.readAsText(f);
+});
+function showBackupPicker(n, name){
+  const dlg = $("#driveDlg"); $("#driveTitle").textContent = "Macros em " + (name || "backup");
+  $("#driveList").innerHTML = n.macros.map((m, i) => `<label class="check-row"><input type="checkbox" value="${i}"> <span><b>${esc(m.m_name || "Sem nome")}</b> <small class="notice">${esc(m.m_category || "")} · ${(m.m_triggerList || []).length} gatilho(s), ${(m.m_actionList || []).length} ação(ões)</small></span></label>`).join("");
+  $("#driveFoot").innerHTML = `<label class="row notice"><input type="checkbox" id="bkAll"> todas</label><button class="btn primary" id="bkGo" type="button">Trazer para Minhas macros</button>`;
+  $("#bkAll").addEventListener("change", e => dlg.querySelectorAll("#driveList input").forEach(x => x.checked = e.target.checked));
+  $("#bkGo").addEventListener("click", async () => {
+    const idx = [...dlg.querySelectorAll("#driveList input:checked")].map(x => +x.value); if (!idx.length) return;
+    await saveNow(); let first = null;
+    for (const i of idx) {
+      const w = wrapFromBackup(n.macros[i], n.globals); const id = newId() + i;
+      const d = { id, name:w.macro.m_name, category:w.macro.m_category || "", json:toJSON(w), updatedAt:Date.now() - i };
+      lib.push(d); try { await store.save(d); } catch (_) {}
+      if (first === null) first = { w, id };
+    }
+    renderLib(); dlg.close(); if (first) openWrapper(first.w, first.id);
+  });
+  if (!dlg.open) dlg.showModal();
+}
+$("#btnDrive").addEventListener("click", async () => {
+  const dlg = $("#driveDlg"); $("#driveTitle").textContent = "Abrir do Google Drive";
+  $("#driveList").innerHTML = `<p class="notice" style="padding:10px">Procurando arquivos .macro e .mdr na pasta…</p>`; $("#driveFoot").innerHTML = "";
+  dlg.showModal();
+  try {
+    const p = await mcpCall(GD, "search_files", { query:`parentId = '${folderId().replace(/'/g, "")}' and (title contains '.macro' or title contains '.mdr')`, excludeContentSnippets:true, pageSize:50 });
+    const files = ((p && p.files) || []).sort((a, b) => String(b.modifiedTime).localeCompare(String(a.modifiedTime)));
+    $("#driveList").innerHTML = files.length ? files.map(f => `<button class="pick" data-file="${esc(f.id)}" data-name="${esc(f.title)}" type="button"><span class="dot ${/\.mdr$/i.test(f.title) ? "k-c" : "k-a"}"></span><span><b>${esc(f.title)}</b><small>${/\.mdr$/i.test(f.title) ? "Backup completo" : "Macro"} · ${f.modifiedTime ? new Date(f.modifiedTime).toLocaleString("pt-BR") : ""}</small></span></button>`).join("")
+      : `<p class="notice" style="padding:10px">Nenhum .macro ou .mdr nessa pasta. Confira o ID da pasta em “Verificar e enviar”.</p>`;
+  } catch (e) { $("#driveList").innerHTML = `<p class="notice bad" style="padding:10px">${esc(mcpErr(e, GD))}</p>`; }
+});
+$("#driveList").addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-file]"); if (!b) return;
+  b.disabled = true; const small = b.querySelector("small"); small.textContent = "Baixando…";
+  try {
+    const p = await mcpCall(GD, "download_file_content", { fileId:b.dataset.file });
+    const b64 = p && (p.content || p.base64Content); if (!b64) throw { code:"tool_error", message:"arquivo vazio" };
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const text = new TextDecoder("utf-8").decode(bytes).replace(/^﻿/, "");
+    const n = normalize(parseJSON(text));
+    if (n.backup) showBackupPicker(n, b.dataset.name); else { $("#driveDlg").close(); await saveNow(); openWrapper(n.wrapper, newId()); markDirty(); }
+  } catch (e) { small.textContent = e instanceof Error ? "Arquivo inválido: " + e.message : mcpErr(e, GD); b.disabled = false; }
+});
+
+/* ---------- assistente ---------- */
+let aiCtl = null;
+function aiStep(steps){ $("#aiLog").innerHTML = steps.map(s => `<span class="${s.state}">${s.state === "done" ? "✓" : s.state === "fail" ? "✕" : s.state === "on" ? "…" : "·"} ${esc(s.text)}</span>`).join(""); }
+function featuresOf(w){
+  const f = { t:new Set(), a:new Set(), c:new Set() };
+  const walk = (list, k) => (list || []).forEach(it => { if (it && it.m_classType) { f[kindOf(it.m_classType)].add(it.m_classType); walk(it.m_constraintList, "c"); } });
+  const scan = m => { walk(m.m_triggerList); walk(m.m_actionList); walk(m.m_constraintList); };
+  scan(w.macro); (w.macro.exportedActionBlocks || []).forEach(scan);
+  return f;
+}
+$("#btnAiStop").addEventListener("click", () => aiCtl && aiCtl.abort());
+$("#btnAi").addEventListener("click", async () => {
+  const req = $("#aiInput").value.trim(); if (!req) { $("#aiInput").focus(); return; }
+  const sample = await sampleP;
+  if (!sample) { aiStep([{ state:"fail", text:"O assistente só funciona com a página aberta no claude.ai." }]); return; }
+  const mode = $("#aiMode").value; const editing = mode === "edit" && (M().m_triggerList.length || M().m_actionList.length || M().m_constraintList.length);
+  const base = editing ? exportText() : null;
+  aiCtl = new AbortController(); const signal = aiCtl.signal;
+  $("#btnAi").disabled = true; $("#btnAiStop").hidden = false; $("#aiFeedback").hidden = true;
+  const steps = [{ text:"Escolhendo gatilhos, ações e restrições", state:"on" }, { text:"Buscando os campos exatos no MacroDroid", state:"" }, { text:"Montando a macro", state:"" }, { text:"Verificando", state:"" }];
+  aiStep(steps);
+  const step = (i, state, text) => { steps[i].state = state; if (text) steps[i].text = text; aiStep(steps); };
+  let i = 0;
+  try {
+    await loadCatalog();
+    const cat = catalogText || Object.entries(fallbackCatalog()).map(([k, l]) => KIND[k].plural.toUpperCase() + ":\n" + l.map(x => "- " + x.name).join("\n")).join("\n\n");
+    const pick = await sample.json(
+      `You pick MacroDroid features. Using ONLY exact names from this catalog, list every trigger, action and constraint the macro below will need (include control-flow actions such as IfConditionAction/EndIfAction/LoopAction when branching or repetition is needed, and state-gating constraints).\n\nCATALOG:\n${cat}\n\n` +
+      (base ? `CURRENT MACRO (being modified):\n${base.slice(0, 60000)}\n\n` : "") +
+      `USER REQUEST (Portuguese): ${req}\n\nReply with only JSON: {"triggers":[...],"actions":[...],"constraints":[...]}`,
+      { modelTier:"quick", signal, cache:false });
+    const valid = catalog && !catalog.fallback ? new Set([...catalog.t, ...catalog.a, ...catalog.c].map(x => x.name)) : null;
+    const sel = { t:new Set(), a:new Set(), c:new Set() };
+    for (const [key, k] of [["triggers","t"],["actions","a"],["constraints","c"]]) for (const n of (pick && pick[key]) || []) if (typeof n === "string" && (!valid || valid.has(n))) sel[k].add(n);
+    if (base) { const f = featuresOf(cur.wrapper); for (const k of ["t","a","c"]) f[k].forEach(n => sel[k].add(n)); }
+    step(0, "done", "Recursos: " + [...sel.t, ...sel.a, ...sel.c].map(label).slice(0, 8).join(", ") + (sel.t.size + sel.a.size + sel.c.size > 8 ? "…" : ""));
+    i = 1; step(1, "on");
+    const schema = await schemaFor({ t:[...sel.t], a:[...sel.a], c:[...sel.c] });
+    step(1, "done"); i = 2; step(2, "on");
+    const rules = `\n\n## Extra rules for this editor\n- Reply with ONLY the complete export-wrapper JSON ({"macroExportVersion":1,"macro":{...},"globalVariables":[...],"userIcons":null,"aiFeedback":"..."}).\n- All user-visible text in the macro (notification titles, messages, spoken text) and aiFeedback must be in Brazilian Portuguese.\n- Use only fields shown in the schema; never guess encodings for fields you do not see there.\n` +
+      (base ? `- You are MODIFYING the existing macro below. Keep every existing item, field and value (including every m_GUID, m_SIGUID and aiGenerated value, copied character for character) unless the request requires changing it. Keep the macro name unless asked to rename.\n\nEXISTING MACRO:\n${base}\n` : `- This is a NEW macro: use m_GUID 0, aiGenerated 1 and the placeholder m_SIGUID convention.\n`);
+    const prompt = schema + rules + `\n\nUSER REQUEST (Portuguese): ${req}`;
+    let got = 0;
+    const res = await sample(prompt, { signal, cache:false, onText:({ text }) => { const n = text.length; if (n - got > 400) { got = n; step(2, "on", "Montando a macro (" + Math.round(n / 1000) + " mil caracteres)"); } } });
+    let w = extractJSON(res.text); let feedback = (w && w.aiFeedback) || "";
+    let n = normalize(w); if (n.backup) throw new SyntaxError("Resposta inesperada");
+    let wrapper = n.wrapper;
+    step(2, "done", "Macro montada"); i = 3; step(3, "on");
+    let v = await mcpCall(MD, "validate_macrodroid_macro", { macro_json:toJSON(wrapper) });
+    if (v && v.valid === false && (v.problems || []).length) {
+      step(3, "on", "Corrigindo " + v.problems.length + " problema(s)");
+      const fix = await sample(prompt + `\n\nYOUR PREVIOUS ANSWER:\n${toJSON(wrapper)}\n\nThe validator reported these problems; return the corrected complete JSON only:\n- ` + v.problems.join("\n- "), { signal, cache:false });
+      w = extractJSON(fix.text); feedback = (w && w.aiFeedback) || feedback; n = normalize(w); wrapper = n.wrapper;
+      v = await mcpCall(MD, "validate_macrodroid_macro", { macro_json:toJSON(wrapper) });
+    }
+    const ok = v && v.valid === true;
+    step(3, ok ? "done" : "fail", ok ? "Verificada pelo MacroDroid" : "Ainda com problemas: veja abaixo");
+    await saveNow();
+    if (editing) { cur.wrapper = wrapper; markDirty(); renderAll(); } else { openWrapper(wrapper, newId()); markDirty(); }
+    cur.validated = ok; setStatus(ok ? "ok" : "bad");
+    $("#validateOut").innerHTML = ok ? `<p class="notice ok">Válida. Clique em “Enviar ao celular”.</p>` : `<ul class="problems">${(v.problems || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    if (feedback) { $("#aiFeedback").textContent = feedback; $("#aiFeedback").hidden = false; }
+    if (!$("#viewJson").hidden) $("#jsonArea").value = pretty(cur.wrapper);
+  } catch (e) {
+    const msg = e instanceof Error ? "A resposta não veio num JSON válido (" + e.message + "). Tente de novo." : e && e.code && /^(no_mcp|server_|needs_reauth|not_in_manifest|approval_required|selection_required|tool_error|blocked_by_policy|consent_required)/.test(e.code) ? mcpErr(e, MD) : sampleErr(e);
+    step(i, e && e.code === "cancelled" ? "" : "fail", msg);
+  } finally { $("#btnAi").disabled = false; $("#btnAiStop").hidden = true; aiCtl = null; }
+});
+
+/* ---------- início ---------- */
+$("#btnManual").addEventListener("click", () => { $("#manualDlg").showModal(); $("#manualBody").scrollTop = 0; });
+$("#manualBody").addEventListener("click", ev => {
+  const a = ev.target.closest("nav a"); if (!a) return; ev.preventDefault();
+  const t = document.getElementById(a.getAttribute("href").slice(1)); if (t) t.scrollIntoView({ block:"start", behavior:"smooth" });
+});
+$("#btnNew").addEventListener("click", async () => { await saveNow(); openWrapper(emptyWrapper(), newId()); markDirty(); $("#mName").select(); });
+openWrapper(exampleWrapper(), null, true);
+initStore();
+sampleP.then(s => { $("#aiAvail").textContent = s ? "" : "disponível no claude.ai"; });
+if (STANDALONE) {
+  // versão hospedada fora do claude.ai: sem conectores nem assistente
+  $("#btnDownload").textContent = "Baixar .macro";
+  for (const id of ["#btnValidate","#btnShare","#btnDriveSave","#btnDrive","#btnAi"]) $(id).disabled = true;
+  const note = document.createElement("p"); note.className = "notice";
+  note.innerHTML = 'Nesta versão você monta, importa e baixa macros. A verificação, o envio por link, o Google Drive e o assistente funcionam na <a href="https://claude.ai/artifact/2YV1xQVwz8UBNX8KXrxcGW" target="_blank" rel="noopener">versão do claude.ai</a>.';
+  $("#exportOut").before(note);
+}
+window.addEventListener("beforeunload", () => { if (dirty) saveNow(); });
+})();
+</script>
+</body></html>
